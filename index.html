@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Задачи">
+<meta name="theme-color" content="#f2f2f7">
+<title>Задачи</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #f2f2f7;
+    --card: #ffffff;
+    --ink: #1c1c1e;
+    --sub: #8e8e93;
+    --line: #e5e5ea;
+    --accent: #34c759;
+    --blue: #007aff;
+    --red: #ff3b30;
+    --orange: #ff9500;
+    --purple: #af52de;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  #app {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: env(safe-area-inset-top) 0 calc(150px + env(safe-area-inset-bottom));
+    position: relative;
+  }
+  .header { padding: 16px 20px 8px; }
+  .date { font-size: 15px; color: var(--blue); font-weight: 500; }
+  .title { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; margin-top: 2px; }
+
+  /* progress dashboard */
+  .dash {
+    display: flex; gap: 12px; padding: 12px 16px 4px; align-items: stretch;
+  }
+  .ring-card {
+    background: var(--card); border-radius: 16px; padding: 16px;
+    display: flex; align-items: center; gap: 14px; flex: 1;
+  }
+  .ring { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .pct {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 15px; font-weight: 700;
+  }
+  .ring-info .big { font-size: 22px; font-weight: 800; }
+  .ring-info .lbl { font-size: 13px; color: var(--sub); margin-top: 2px; }
+
+  .stats { display: flex; flex-direction: column; gap: 12px; }
+  .stat-card {
+    background: var(--card); border-radius: 16px; padding: 12px 16px;
+    min-width: 96px; text-align: center; flex: 1; display: flex;
+    flex-direction: column; justify-content: center;
+  }
+  .stat-card .v { font-size: 22px; font-weight: 800; }
+  .stat-card .v .em { font-size: 16px; }
+  .stat-card .k { font-size: 12px; color: var(--sub); margin-top: 1px; }
+
+  /* section label */
+  .seclabel {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 22px 6px; font-size: 13px; font-weight: 600;
+    color: var(--sub); text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .seclabel button {
+    background: none; border: none; color: var(--blue); font-size: 14px;
+    font-weight: 500; cursor: pointer; text-transform: none; letter-spacing: 0;
+  }
+
+  .list { padding: 0 16px; }
+  .item {
+    display: flex; align-items: center; gap: 13px;
+    background: var(--card); padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    animation: slidein .25s ease;
+  }
+  .item:first-child { border-radius: 14px 14px 0 0; }
+  .item:last-child { border-radius: 0 0 14px 14px; border-bottom: none; }
+  .item:only-child { border-radius: 14px; }
+  @keyframes slidein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+  .check {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--line); flex-shrink: 0; cursor: pointer;
+    display: grid; place-items: center; transition: all .2s;
+  }
+  .check.done { background: var(--accent); border-color: var(--accent); }
+  .check svg { width: 14px; height: 14px; opacity: 0; transition: opacity .2s; }
+  .check.done svg { opacity: 1; }
+
+  .tbody { flex: 1; min-width: 0; }
+  .text { font-size: 17px; line-height: 1.25; transition: all .2s; word-break: break-word; }
+  .text.done { color: var(--sub); text-decoration: line-through; }
+  .meta { font-size: 12px; color: var(--orange); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
+  .meta .pill { background: rgba(255,149,0,0.12); padding: 1px 7px; border-radius: 6px; }
+  .meta .days { color: var(--sub); }
+  .meta .days .pill { background: rgba(142,142,147,0.14); color: var(--sub); }
+
+  .del {
+    background: none; border: none; color: var(--red);
+    font-size: 24px; cursor: pointer; opacity: 0.5; padding: 0 4px; flex-shrink: 0;
+  }
+  .del:active { opacity: 1; }
+
+  .empty { text-align: center; padding: 40px 30px; color: var(--sub); }
+  .empty .em { font-size: 40px; }
+  .empty p { margin-top: 10px; font-size: 15px; }
+
+  /* calendar */
+  .cal { background: var(--card); border-radius: 16px; margin: 0 16px; padding: 14px 16px 16px; }
+  .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .cal-head .m { font-size: 16px; font-weight: 700; }
+  .cal-head button { background: none; border: none; color: var(--blue); font-size: 20px; cursor: pointer; padding: 0 8px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal-grid .wd { font-size: 11px; color: var(--sub); text-align: center; padding-bottom: 4px; }
+  .cal-cell { aspect-ratio: 1; display: grid; place-items: center; font-size: 13px; border-radius: 9px; position: relative; }
+  .cal-cell.empty2 { visibility: hidden; }
+  .cal-cell.today { outline: 2px solid var(--blue); }
+  .cal-dot { position: absolute; bottom: 4px; width: 5px; height: 5px; border-radius: 50%; }
+
+  /* composer */
+  .composer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    max-width: 500px; margin: 0 auto;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(242,242,247,0.9);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--line);
+  }
+  .composer .row { display: flex; gap: 10px; }
+  .composer input[type=text] {
+    flex: 1; border: none; background: var(--card);
+    border-radius: 20px; padding: 12px 16px; font-size: 17px;
+    color: var(--ink); outline: none; font-family: inherit;
+  }
+  .composer input:focus { box-shadow: 0 0 0 3px rgba(0,122,255,0.15); }
+  .add {
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    background: var(--blue); color: #fff; font-size: 26px; cursor: pointer;
+    display: grid; place-items: center; flex-shrink: 0; transition: transform .1s;
+  }
+  .add:active { transform: scale(0.92); }
+  .add:disabled { opacity: 0.4; }
+
+  .opts { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; flex-wrap: wrap; }
+  .toggle {
+    font-size: 13px; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--line);
+    background: var(--card); color: var(--sub); cursor: pointer; font-family: inherit;
+  }
+  .toggle.on { background: var(--orange); color: #fff; border-color: var(--orange); }
+  .wdrow { display: flex; gap: 5px; }
+  .wd-btn {
+    width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--card); color: var(--sub); font-size: 12px; cursor: pointer;
+    display: grid; place-items: center; font-family: inherit;
+  }
+  .wd-btn.on { background: var(--orange); color: #fff; border-color: var(--orange); }
+
+  /* modal */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50;
+    display: grid; place-items: end center; padding-bottom: 0;
+  }
+  .modal {
+    background: var(--bg); width: 100%; max-width: 500px;
+    border-radius: 18px 18px 0 0; padding: 18px 18px calc(24px + env(safe-area-inset-bottom));
+    max-height: 80vh; overflow-y: auto; animation: up .25s ease;
+  }
+  @keyframes up { from { transform: translateY(100%); } to { transform: none; } }
+  .modal h2 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .modal p.hint { font-size: 13px; color: var(--sub); margin-bottom: 14px; }
+  .goal-row {
+    background: var(--card); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .goal-row .gname { flex: 1; font-size: 16px; }
+  .goal-row .bar { height: 6px; background: var(--line); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .goal-row .bar > i { display: block; height: 100%; background: var(--purple); border-radius: 3px; }
+  .goal-row .gnum { font-size: 13px; color: var(--sub); margin-top: 5px; }
+  .modal .close { width: 100%; padding: 14px; border: none; background: var(--card); color: var(--blue); font-size: 17px; font-weight: 600; border-radius: 12px; cursor: pointer; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function () {
+  const app = document.getElementById("app");
+  const KEY = "tasks_v2";
+  const WD = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
+  const WD_ORDER = [1,2,3,4,5,6,0]; // Mon-first for the picker
+
+  // state shape
+  // tasks: [{id, text, repeat:null|'daily'|'weekdays', days:[0..6]|null, createdISO}]
+  // log: { "YYY-MM-DD": { doneIds:[id...], total:n } }  -> daily completion snapshot
+  // dayState: { "YYYY-MM-DD": { instances:[{srcId,text,done}], oneoffs:[{id,text,done}] } }
+  let state = { tasks: [], days: {}, calMonth: null };
+
+  function todayKey(d) {
+    d = d || new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+
+  function load() {
+    try { const raw = localStorage.getItem(KEY); if (raw) state = JSON.parse(raw); } catch(e) {}
+    if (!state.tasks) state.tasks = [];
+    if (!state.days) state.days = {};
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
+
+  // ensure today's day-instance exists, materializing recurring templates
+  function ensureDay(key) {
+    const d = new Date(key + "T00:00:00");
+    const dow = d.getDay();
+    if (!state.days[key]) state.days[key] = { instances: [], oneoffs: [] };
+    const day = state.days[key];
+    // add any recurring task that applies today and isn't already materialized
+    state.tasks.forEach(t => {
+      let applies = false;
+      if (t.repeat === "daily") applies = true;
+      else if (t.repeat === "weekdays") applies = (t.days || []).includes(dow);
+      if (applies && !day.instances.some(i => i.srcId === t.id)) {
+        // only materialize for days on/after the task was created
+        if (key >= (t.createdKey || key)) {
+          day.instances.push({ srcId: t.id, text: t.text, done: false });
+        }
+      }
+    });
+    return day;
+  }
+
+  function addTask(text, repeat, days) {
+    const t = {
+      id: Date.now() + "" + Math.random().toString(36).slice(2,5),
+      text, repeat: repeat || null, days: days || null,
+      createdKey: todayKey()
+    };
+    if (repeat) {
+      state.tasks.push(t);
+    } else {
+      // one-off goes straight into today
+      const k = todayKey();
+      if (!state.days[k]) state.days[k] = { instances: [], oneoffs: [] };
+      state.days[k].oneoffs.unshift({ id: t.id, text, done: false });
+    }
+    save(); render();
+  }
+
+  function toggleInstance(key, srcId) {
+    const i = state.days[key].instances.find(x => x.srcId === srcId);
+    if (i) { i.done = !i.done; save(); render(); }
+  }
+  function toggleOneoff(key, id) {
+    const o = state.days[key].oneoffs.find(x => x.id === id);
+    if (o) { o.done = !o.done; save(); render(); }
+  }
+  function removeOneoff(key, id) {
+    state.days[key].oneoffs = state.days[key].oneoffs.filter(x => x.id !== id);
+    save(); render();
+  }
+  function removeTemplate(srcId) {
+    // delete the recurring template AND its instance from today only
+    state.tasks = state.tasks.filter(t => t.id !== srcId);
+    const k = todayKey();
+    if (state.days[k]) state.days[k].instances = state.days[k].instances.filter(i => i.srcId !== srcId);
+    save(); render();
+  }
+
+  // ---- progress helpers ----
+  function dayItems(key) {
+    const day = state.days[key] || { instances: [], oneoffs: [] };
+    return [...day.instances, ...day.oneoffs];
+  }
+  function dayPct(key) {
+    const items = dayItems(key);
+    if (items.length === 0) return null;
+    const done = items.filter(i => i.done).length;
+    return { done, total: items.length, pct: Math.round(done/items.length*100) };
+  }
+  // streak: consecutive days up to today where all items done (and there were items)
+  function currentStreak() {
+    let streak = 0;
+    let d = new Date();
+    for (let n = 0; n < 400; n++) {
+      const key = todayKey(d);
+      const p = dayPct(key);
+      if (p && p.pct === 100) { streak++; }
+      else if (key === todayKey()) { /* today not done yet — don't break, just don't count */ }
+      else break;
+      d.setDate(d.getDate() - 1);
+    }
+    return streak;
+  }
+  // count of fully-completed days this calendar month
+  function monthDone() {
+    const now = new Date();
+    let c = 0;
+    Object.keys(state.days).forEach(key => {
+      const dt = new Date(key + "T00:00:00");
+      if (dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear()) {
+        const p = dayPct(key);
+        if (p && p.pct === 100) c++;
+      }
+    });
+    return c;
+  }
+  // per-template streak & month count for goals view
+  function templateStats(srcId) {
+    let streak = 0, monthC = 0;
+    const now = new Date();
+    let d = new Date();
+    let counting = true;
+    for (let n = 0; n < 400; n++) {
+      const key = todayKey(d);
+      const day = state.days[key];
+      const inst = day && day.instances.find(i => i.srcId === srcId);
+      if (counting) {
+        if (inst && inst.done) streak++;
+        else if (key === todayKey()) { /* allow today pending */ }
+        else counting = false;
+      }
+      if (inst && inst.done) {
+        const dt = new Date(key + "T00:00:00");
+        if (dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear()) monthC++;
+      }
+      d.setDate(d.getDate() - 1);
+    }
+    return { streak, monthC };
+  }
+
+  const CHECK = '<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+  // composer ui state (kept across renders)
+  let comp = { repeat: false, days: [1,2,3,4,5] };
+  let modalOpen = false;
+
+  function render() {
+    const now = new Date();
+    const tk = todayKey();
+    ensureDay(tk);
+
+    const dstr = now.toLocaleDateString("ru-RU", { weekday:"long", day:"numeric", month:"long" });
+    const p = dayPct(tk) || { done:0, total:0, pct:0 };
+    const streak = currentStreak();
+    const mdone = monthDone();
+
+    const day = state.days[tk];
+    const recur = day.instances;
+    const ones = day.oneoffs;
+
+    // progress ring math
+    const R = 28, C = 2*Math.PI*R;
+    const off = C * (1 - p.pct/100);
+    const ringColor = p.pct === 100 ? "var(--accent)" : "var(--blue)";
+
+    let listHTML = "";
+    if (recur.length + ones.length === 0) {
+      listHTML = '<div class="empty"><div class="em">📋</div><p>На сегодня задач нет. Добавьте задачу или ежедневный шаблон ниже.</p></div>';
+    } else {
+      if (recur.length) {
+        listHTML += '<div class="seclabel">Ежедневные</div><div class="list">' + recur.map(i => {
+          const tpl = state.tasks.find(t => t.id === i.srcId);
+          let metaDays = "";
+          if (tpl && tpl.repeat === "weekdays") {
+            metaDays = '<span class="days">' + (tpl.days||[]).slice().sort((a,b)=>WD_ORDER.indexOf(a)-WD_ORDER.indexOf(b)).map(d=>'<span class="pill">'+WD[d]+'</span>').join("") + '</span>';
+          }
+          return `<div class="item">
+            <div class="check ${i.done?"done":""}" data-act="ti" data-id="${i.srcId}">${CHECK}</div>
+            <div class="tbody">
+              <div class="text ${i.done?"done":""}">${esc(i.text)}</div>
+              <div class="meta"><span class="pill">↻ каждый день</span>${metaDays}</div>
+            </div>
+            <button class="del" data-act="rt" data-id="${i.srcId}">×</button>
+          </div>`;
+        }).join("") + '</div>';
+      }
+      if (ones.length) {
+        listHTML += '<div class="seclabel">Разовые</div><div class="list">' + ones.map(o => `
+          <div class="item">
+            <div class="check ${o.done?"done":""}" data-act="oi" data-id="${o.id}">${CHECK}</div>
+            <div class="tbody"><div class="text ${o.done?"done":""}">${esc(o.text)}</div></div>
+            <button class="del" data-act="ro" data-id="${o.id}">×</button>
+          </div>`).join("") + '</div>';
+      }
+    }
+
+    // composer
+    const wdHTML = WD_ORDER.map(d => `<button class="wd-btn ${comp.days.includes(d)?"on":""}" data-act="wd" data-d="${d}">${WD[d]}</button>`).join("");
+
+    app.innerHTML = `
+      <div class="header">
+        <div class="date">${dstr.charAt(0).toUpperCase()+dstr.slice(1)}</div>
+        <div class="title">Задачи</div>
+      </div>
+
+      <div class="dash">
+        <div class="ring-card">
+          <div class="ring">
+            <svg width="64" height="64">
+              <circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--line)" stroke-width="7"/>
+              <circle cx="32" cy="32" r="${R}" fill="none" stroke="${ringColor}" stroke-width="7"
+                stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"
+                style="transition:stroke-dashoffset .4s ease"/>
+            </svg>
+            <div class="pct">${p.pct}%</div>
+          </div>
+          <div class="ring-info">
+            <div class="big">${p.done}/${p.total}</div>
+            <div class="lbl">сегодня</div>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat-card"><div class="v">${streak}<span class="em"> 🔥</span></div><div class="k">дней подряд</div></div>
+          <div class="stat-card"><div class="v">${mdone}</div><div class="k">дней в месяце</div></div>
+        </div>
+      </div>
+
+      <div class="seclabel"><span></span><button data-act="goals">Цели и серии ›</button></div>
+
+      ${listHTML}
+
+      ${calendarHTML()}
+
+      <div class="composer">
+        <div class="opts">
+          <button class="toggle ${comp.repeat?"on":""}" data-act="trepeat">↻ Ежедневная</button>
+          ${comp.repeat ? '<div class="wdrow">'+wdHTML+'</div>' : ''}
+        </div>
+        <div class="row">
+          <input type="text" id="inp" placeholder="${comp.repeat?'Название ежедневной задачи…':'Новая задача…'}" maxlength="200" autocomplete="off" autocorrect="off"/>
+          <button class="add" id="addbtn" disabled>+</button>
+        </div>
+      </div>
+
+      ${modalOpen ? goalsModalHTML() : ''}
+    `;
+
+    // composer wiring
+    const inp = document.getElementById("inp");
+    const btn = document.getElementById("addbtn");
+    inp.oninput = () => btn.disabled = inp.value.trim()==="";
+    const submit = () => {
+      const v = inp.value.trim(); if (!v) return;
+      if (comp.repeat) {
+        const allWeek = comp.days.length === 7;
+        addTask(v, allWeek ? "daily" : "weekdays", allWeek ? null : comp.days.slice());
+      } else {
+        addTask(v, null, null);
+      }
+    };
+    btn.onclick = submit;
+    inp.onkeydown = e => { if (e.key==="Enter") submit(); };
+
+    // delegated clicks
+    app.querySelectorAll("[data-act]").forEach(el => {
+      const act = el.dataset.act;
+      el.onclick = (e) => {
+        if (act==="ti") toggleInstance(tk, el.dataset.id);
+        else if (act==="oi") toggleOneoff(tk, el.dataset.id);
+        else if (act==="rt") { if(confirm("Удалить ежедневную задачу? Она перестанет появляться.")) removeTemplate(el.dataset.id); }
+        else if (act==="ro") removeOneoff(tk, el.dataset.id);
+        else if (act==="trepeat") { comp.repeat = !comp.repeat; render(); }
+        else if (act==="wd") {
+          const d = +el.dataset.d;
+          if (comp.days.includes(d)) comp.days = comp.days.filter(x=>x!==d);
+          else comp.days.push(d);
+          if (comp.days.length===0) comp.days=[d];
+          render();
+        }
+        else if (act==="goals") { modalOpen = true; render(); }
+        else if (act==="closemodal") { modalOpen = false; render(); }
+        else if (act==="calprev") { shiftCal(-1); }
+        else if (act==="calnext") { shiftCal(1); }
+      };
+    });
+  }
+
+  // ---- calendar ----
+  function shiftCal(delta) {
+    let base = state.calMonth ? new Date(state.calMonth+"-01T00:00:00") : new Date();
+    base.setMonth(base.getMonth()+delta);
+    state.calMonth = base.getFullYear()+"-"+String(base.getMonth()+1).padStart(2,"0");
+    save(); render();
+  }
+  function calendarHTML() {
+    const base = state.calMonth ? new Date(state.calMonth+"-01T00:00:00") : new Date();
+    const y = base.getFullYear(), m = base.getMonth();
+    const monthName = base.toLocaleDateString("ru-RU",{month:"long",year:"numeric"});
+    const first = new Date(y,m,1).getDay(); // 0=Sun
+    const lead = (first+6)%7; // Mon-first offset
+    const daysIn = new Date(y,m+1,0).getDate();
+    const tk = todayKey();
+
+    let cells = "";
+    for (let i=0;i<lead;i++) cells += '<div class="cal-cell empty2"></div>';
+    for (let dnum=1; dnum<=daysIn; dnum++) {
+      const key = y+"-"+String(m+1).padStart(2,"0")+"-"+String(dnum).padStart(2,"0");
+      const p = dayPct(key);
+      let dot = "";
+      if (p) {
+        let col = p.pct===100 ? "var(--accent)" : (p.pct>0 ? "var(--orange)" : "var(--line)");
+        dot = `<span class="cal-dot" style="background:${col}"></span>`;
+      }
+      cells += `<div class="cal-cell ${key===tk?"today":""}">${dnum}${dot}</div>`;
+    }
+    const wdh = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map(w=>`<div class="wd">${w}</div>`).join("");
+    return `
+      <div class="seclabel">История</div>
+      <div class="cal">
+        <div class="cal-head">
+          <button data-act="calprev">‹</button>
+          <div class="m">${monthName.charAt(0).toUpperCase()+monthName.slice(1)}</div>
+          <button data-act="calnext">›</button>
+        </div>
+        <div class="cal-grid">${wdh}${cells}</div>
+      </div>`;
+  }
+
+  // ---- goals modal ----
+  function goalsModalHTML() {
+    const recurring = state.tasks;
+    let rows;
+    if (recurring.length === 0) {
+      rows = '<p class="hint">Ежедневных задач пока нет. Создайте их через переключатель «↻ Ежедневная» внизу — здесь появятся серии и счётчики по каждой.</p>';
+    } else {
+      rows = recurring.map(t => {
+        const s = templateStats(t.id);
+        const goal = 30;
+        const pct = Math.min(100, Math.round(s.monthC/goal*100));
+        return `<div class="goal-row" style="display:block">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="gname">${esc(t.text)}</div>
+            <div style="font-size:15px;font-weight:700">${s.streak} 🔥</div>
+          </div>
+          <div class="bar"><i style="width:${pct}%"></i></div>
+          <div class="gnum">${s.monthC} из ${goal} в этом месяце</div>
+        </div>`;
+      }).join("");
+    }
+    return `<div class="modal-bg" data-act="closemodal"><div class="modal" onclick="event.stopPropagation()">
+      <h2>Цели и серии</h2>
+      <p class="hint">Серия 🔥 — сколько дней подряд задача выполнена. Полоса — прогресс к 30 выполнениям за месяц.</p>
+      ${rows}
+      <button class="close" data-act="closemodal">Готово</button>
+    </div></div>`;
+  }
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
